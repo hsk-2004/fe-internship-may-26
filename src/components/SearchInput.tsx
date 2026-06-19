@@ -16,11 +16,23 @@ export function SearchInput({ value, onChange, placeholder = 'Search...' }: Sear
         e.preventDefault()
         inputRef.current?.focus()
       }
-      if (e.key === 'Escape') inputRef.current?.blur()
+      // Ctrl+K to focus search (common in modern apps like VS Code, Slack)
+      if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        inputRef.current?.focus()
+      }
+      // Escape: clear query if focused, then blur
+      if (e.key === 'Escape' && document.activeElement === inputRef.current) {
+        if (value) {
+          onChange('')
+        } else {
+          inputRef.current?.blur()
+        }
+      }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [])
+  }, [value, onChange])
 
   return (
     <div className="relative">

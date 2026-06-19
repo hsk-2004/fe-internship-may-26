@@ -1,8 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { Item } from '../types'
-
-// Uncomment this import when you are ready to wire up the search logic:
-// import { searchItems } from '../services/mockApi'
+import { searchItems } from '../services/mockApi'
+import { useDebounce } from './useDebounce'
 
 export interface UseSearchReturn {
   query: string
@@ -13,37 +12,60 @@ export interface UseSearchReturn {
 }
 
 export function useSearch(): UseSearchReturn {
-  const [query, setQuery] = useState('')
+  // Read initial query from URL if present (?q=react)
+  const initialQuery = new URLSearchParams(window.location.search).get('q') || ''
+  const [query, setQuery] = useState(initialQuery)
   const [results, setResults] = useState<Item[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // ── TODO: Implement debounced async search ──────────────────────────────
-  //
-  // 1. DEBOUNCE (300 ms)
-  //    Wait 300 ms after the user stops typing before running the search.
-  //    Cancel any pending timer when a new keystroke arrives.
-  //    Return a cleanup function from useEffect to cancel on unmount.
-  //
-  // 2. ASYNC SEARCH
-  //    Call searchItems(query) after the debounce delay fires.
-  //    - Set isLoading = true before the call.
-  //    - On success: update results, set isLoading = false.
-  //    - On error:   store message in error, set isLoading = false.
-  //    - Empty query: return all items (or clear results -- your choice).
-  //
-  // 3. STALE-RESPONSE PREVENTION
-  //    Rapid typing causes overlapping in-flight requests.
-  //    An older response MUST NOT replace a newer one.
-  //    Example: user types "re" then quickly "react" -- if the "re" response
-  //    arrives after "react", it must be discarded.
-  //    Hint: a cancellation flag or an incrementing request-ID ref both work.
-  //
-  // 4. UNMOUNT CLEANUP
-  //    No pending timers or state updates should run after the hook unmounts.
-  //
-  // You will need useEffect and useRef from React.
-  // ───────────────────────────────────────────────────────────────────────
+  // Debounce the query using the reusable hook
+  const debouncedQuery = useDebounce(query, 300)
+
+  // Track the latest request so stale responses can be ignored
+  const requestIdRef = useRef(0)
+
+  useEffect(() => {
+    // Increment request ID so any in-flight request becomes stale
+    const currentRequestId = ++requestIdRef.current
+
+    setIsLoading(true)
+    setError(null)
+
+    searchItems(debouncedQuery)
+      .then((items) => {
+        // Stale-response guard: only update if this is still the latest request
+        if (currentRequestId !== requestIdRef.current) return
+
+        setResults(items)
+        setIsLoading(false)
+      })
+      .catch((err) => {
+        if (currentRequestId !== requestIdRef.current) return
+
+        setError(err instanceof Error ? err.message : 'An error occurred')
+        setResults([])
+        setIsLoading(false)
+      })
+
+    // Cleanup: mark this request as stale on unmount or re-run
+    return () => {
+      requestIdRef.current++
+    }
+  }, [debouncedQuery])
+
+  // Sync the debounced query to the URL
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (debouncedQuery) {
+      url.searchParams.set('q', debouncedQuery)
+    } else {
+      url.searchParams.delete('q')
+    }
+    window.history.replaceState({}, '', url.toString())
+  }, [debouncedQuery])
 
   return { query, setQuery, results, isLoading, error }
 }
+
+
