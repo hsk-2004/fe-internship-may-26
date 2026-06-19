@@ -24,7 +24,11 @@ export default function App() {
           <p className="mt-2 text-xs text-gray-600">
             Press{' '}
             <kbd className="px-1 py-0.5 bg-gray-800 rounded text-gray-400 font-mono text-xs">/</kbd>
-            {' '}to focus
+            {' '}or{' '}
+            <kbd className="px-1 py-0.5 bg-gray-800 rounded text-gray-400 font-mono text-xs">Ctrl+K</kbd>
+            {' '}to focus &middot;{' '}
+            <kbd className="px-1 py-0.5 bg-gray-800 rounded text-gray-400 font-mono text-xs">Esc</kbd>
+            {' '}to clear
           </p>
         </div>
 
