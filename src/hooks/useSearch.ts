@@ -12,7 +12,9 @@ export interface UseSearchReturn {
 }
 
 export function useSearch(): UseSearchReturn {
-  const [query, setQuery] = useState('')
+  // Read initial query from URL if present (?q=react)
+  const initialQuery = new URLSearchParams(window.location.search).get('q') || ''
+  const [query, setQuery] = useState(initialQuery)
   const [results, setResults] = useState<Item[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -50,6 +52,17 @@ export function useSearch(): UseSearchReturn {
     return () => {
       requestIdRef.current++
     }
+  }, [debouncedQuery])
+
+  // Sync the debounced query to the URL
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (debouncedQuery) {
+      url.searchParams.set('q', debouncedQuery)
+    } else {
+      url.searchParams.delete('q')
+    }
+    window.history.replaceState({}, '', url.toString())
   }, [debouncedQuery])
 
   return { query, setQuery, results, isLoading, error }
